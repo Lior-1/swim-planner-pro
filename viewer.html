@@ -105,9 +105,9 @@ body{background:#f5f4ef;min-height:100vh;display:flex;align-items:center;justify
     window.addEventListener('resize', fitFrame);
     frame.src = viewUrl;
 
-    // Klick auf Vorschau → Dokumentansicht öffnen
+    // Klick auf Vorschau → echte PDF eingebettet anzeigen
     document.getElementById('pdfPreview').onclick = function() {
-      window.location.href = viewUrl;
+      window.location.href = base + '#SWIMQR:' + b64 + '&pdfview=1';
     };
 
     // PDF herunterladen

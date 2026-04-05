@@ -154,8 +154,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
 .doc-meta-row{display:flex;flex-wrap:wrap;gap:12px 20px;padding:6px 0 4px;margin-bottom:0}
 .doc-meta-label{font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:2px;color:#777;margin-bottom:2px}
 .doc-meta-val{font-family:'EB Garamond',serif;font-size:13px;color:#222;white-space:nowrap}
-.doc-summary{background:#111;color:#fff;padding:0 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:stretch}
-.doc-sum-label{font-family:'DM Mono',monospace;font-size:7px;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,.4)}
+.doc-summary{background:#000;color:#fff;padding:0 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:stretch}
+.doc-sum-label{font-family:'DM Mono',monospace;font-size:7px;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,.75)}
 .doc-sum-val{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:#fff;line-height:1.1}
 .doc-section-head{background:#d8d4cb;border-left:3px solid #1a3a5c;padding:7px 12px;display:flex;justify-content:space-between;align-items:center}
 .doc-section-name{font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#1a3a5c;font-weight:500}
@@ -165,7 +165,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
 .doc-table td{padding:7px 10px;font-size:13px;border-bottom:1px solid #ddd;vertical-align:top;line-height:1.5}
 .doc-table tr:last-child td{border-bottom:none}
 .doc-table tr:nth-child(even) td{background:#eeece8}
-.doc-footer{margin-top:32px;padding-top:12px;border-top:1px solid #bbb;display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:8px;color:#888;text-transform:uppercase;letter-spacing:1px}
+.doc-footer{margin-top:32px;padding-top:12px;border-top:0.5px solid #bbb;display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:8px;font-weight:700;color:#333;text-transform:uppercase;letter-spacing:1px}
 
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
 .modal-overlay.open{opacity:1;pointer-events:all}
@@ -229,6 +229,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
   <div style="font-size:18px;font-weight:600;color:#1a3a5c;">Bitte warten…</div>
   <div style="font-size:13px;color:#aaa;font-family:monospace;margin-top:8px;">PDF wird erstellt</div>
 </div>
+<!-- PDF eingebettete Ansicht (bei &pdfview=1) -->
+<div id="pdfEmbedView" style="display:none;position:fixed;inset:0;z-index:9999;background:#222;flex-direction:column;">
+  <div style="background:#1a1a1a;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <button id="pdfEmbedBack" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:4px;padding:6px 12px;font-size:13px;cursor:pointer">← Zurück</button>
+    <button id="pdfEmbedDownload" style="background:#1a3a5c;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer">↓ PDF herunterladen</button>
+  </div>
+  <iframe id="pdfEmbedFrame" style="flex:1;width:100%;border:none;"></iframe>
+</div>
 <!-- Passwort-Schutz (nur auf GitHub, nicht lokal) -->
 <div id="indexPwOverlay" style="display:none;position:fixed;inset:0;z-index:10001;background:#f5f4ef;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;box-shadow:0 8px 48px rgba(0,0,0,0.13);padding:48px 40px;max-width:360px;width:90%;text-align:center;">
@@ -253,12 +261,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
   var isPdf=_validQR&&h.indexOf('&pdf=1')!==-1;
   var isView=_validQR&&h.indexOf('&view=1')!==-1;
   var isPreview=_validQR&&h.indexOf('&preview=1')!==-1;
-  var isPlainQR=_validQR&&!isPdf&&!isView&&!isPreview;
-  if(isPdf||isPreview){
+  var isPdfView=_validQR&&h.indexOf('&pdfview=1')!==-1;
+  var isPlainQR=_validQR&&!isPdf&&!isView&&!isPreview&&!isPdfView;
+  if(isPdf||isPreview||isPdfView){
     var o=document.getElementById('pdfModeOverlay');
     if(o){
       o.style.display='flex';
-      if(isPreview){var kids=o.children;for(var i=1;i<kids.length;i++)kids[i].style.display='none';}
+      if(isPreview||isPdfView){var kids=o.children;for(var i=1;i<kids.length;i++)kids[i].style.display='none';}
     }
   } else if(isGH&&(!h||isPlainQR)){
     var p=document.getElementById('indexPwOverlay');if(p)p.style.display='flex';
@@ -465,7 +474,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
   var isGH = window.location.hostname === 'lior-1.github.io';
   var _qrRawA=h.indexOf('#SWIMQR:')===0?h.slice(8):'';
   var _qrB64A=_qrRawA.indexOf('&')!==-1?_qrRawA.slice(0,_qrRawA.indexOf('&')):_qrRawA;
-  var isQR=_vqrb64(_qrB64A)&&(h.indexOf('&pdf=1')!==-1||h.indexOf('&view=1')!==-1||h.indexOf('&preview=1')!==-1);
+  var isQR=_vqrb64(_qrB64A)&&(h.indexOf('&pdf=1')!==-1||h.indexOf('&view=1')!==-1||h.indexOf('&preview=1')!==-1||h.indexOf('&pdfview=1')!==-1);
   var unlocked = false;
   var initAppFn = null;
 
@@ -1992,9 +2001,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
       '.doc-table tr{page-break-inside:avoid}' +
       '.doc-table td{word-wrap:break-word;overflow-wrap:break-word}' +
       '.pg-footer{position:absolute;bottom:0;left:14mm;right:14mm;height:16mm}' +
-      '.pg-footer hr{border:none;border-top:0.5px solid #bbbbbb;margin:0;position:absolute;top:0;left:0;right:0}' +
+      '.pg-footer hr{border:none;border-top:0.5px solid #bbb;margin:0;position:absolute;top:0;left:0;right:0}' +
       '.pg-footer .pfi{position:absolute;top:5mm;left:0;right:0;display:flex;justify-content:space-between;' +
-        'align-items:center;font-family:"Courier New",monospace;font-size:6pt;color:#888888;' +
+        'align-items:center;font-family:"Courier New",monospace;font-size:6pt;font-weight:700;color:#333;' +
         'letter-spacing:0.4px;text-transform:uppercase}' +
       '.pg-footer .pfc{position:absolute;left:0;right:0;text-align:center;pointer-events:none}';
 
@@ -2195,6 +2204,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
         combined.set(append, cleanBuf.byteLength);
         var blob = new Blob([combined], {type:'application/pdf'});
         var blobUrl = URL.createObjectURL(blob);
+        if (window._pdfEmbedMode) {
+          window._pdfEmbedMode = false;
+          if (typeof window._onPdfEmbedReady === 'function') {
+            window._onPdfEmbedReady(blobUrl, getFilename() + '.pdf');
+          }
+          return; // kein Download, kein revokeObjectURL
+        }
         if (window._pdfPreviewMode) {
           // Vorschau-Modus: iframe navigiert zu Blob-URL (echte PDF)
           window._pdfPreviewMode = false;
@@ -3100,7 +3116,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
     // Remove any @page rules from app CSS so print @page wins
     styleText = styleText.replace(/@page\s*\{[^}]*\}/g, '');
     var fontLink = '<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@0,400;0,500&display=swap" rel="stylesheet">';
-    var printDateStr = new Date().toLocaleDateString('de-DE');
+    var printDateStr = new Date().toLocaleDateString('de-DE') + ', ' + new Date().toLocaleTimeString('de-DE', {hour:'2-digit',minute:'2-digit'});
     var printCss =
       '*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}' +
       'body{background:#6b6b6b;font-family:"EB Garamond",Georgia,serif;font-size:15px;line-height:1.6;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:20px 0;display:flex;flex-direction:column;align-items:center;gap:12px}' +
@@ -3114,8 +3130,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
       '.doc-table{margin-bottom:0!important}' +
       '.doc-table td{word-wrap:break-word;overflow-wrap:break-word}' +
       '.pg-footer{position:absolute;bottom:0;left:14mm;right:14mm;height:16mm}' +
-      '.pg-footer hr{border:none;border-top:0.5px solid #bbbbbb;margin:0;position:absolute;top:0;left:0;right:0}' +
-      '.pg-footer .pfi{position:absolute;top:5mm;left:0;right:0;display:flex;justify-content:space-between;align-items:center;font-family:"Courier New",monospace;font-size:6pt;color:#888888;letter-spacing:0.4px;text-transform:uppercase}' +
+      '.pg-footer hr{border:none;border-top:0.5px solid #bbb;margin:0;position:absolute;top:0;left:0;right:0}' +
+      '.pg-footer .pfi{position:absolute;top:5mm;left:0;right:0;display:flex;justify-content:space-between;align-items:center;font-family:"Courier New",monospace;font-size:6pt;font-weight:700;color:#333;letter-spacing:0.4px;text-transform:uppercase}' +
       '.pg-footer .pfc{position:absolute;left:0;right:0;text-align:center;pointer-events:none}' +
       '@media print{body{background:#fff!important;padding:0!important;gap:0!important}.pg{box-shadow:none!important}}';
 
@@ -3552,9 +3568,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
 
   // ── URL-Hash beim Start prüfen: #SWIMQR:BASE64 → Plan laden ─────────────
   // &pdf=1 → PDF automatisch exportieren (kein Editor sichtbar)
-  // &pdf=1     → PDF generieren + herunterladen, dann Dokumentansicht zeigen
-  // &view=1    → nur Dokumentansicht (kein Editor, kein Edit-Button)
-  // &preview=1 → PDF generieren, iframe navigiert zu Blob-URL (echte PDF-Vorschau)
+  // &pdf=1      → PDF generieren + herunterladen, Bestätigung zeigen
+  // &pdfview=1  → PDF generieren, eingebettet anzeigen (mit Download-Button)
+  // &view=1     → nur Dokumentansicht (kein Editor, kein Edit-Button)
+  // &preview=1  → PDF generieren, iframe navigiert zu Blob-URL (echte PDF-Vorschau)
   // ohne Parameter → Plan in Editor laden
   (function() {
     var hash = window.location.hash || '';
@@ -3564,28 +3581,52 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
     var pdfMode     = rest.indexOf('&pdf=1')     !== -1;
     var viewMode    = rest.indexOf('&view=1')    !== -1;
     var previewMode = rest.indexOf('&preview=1') !== -1;
+    var pdfviewMode = rest.indexOf('&pdfview=1') !== -1;
     var b64 = pdfMode     ? rest.slice(0, rest.indexOf('&pdf=1'))     :
               viewMode    ? rest.slice(0, rest.indexOf('&view=1'))    :
-              previewMode ? rest.slice(0, rest.indexOf('&preview=1')) : rest;
+              previewMode ? rest.slice(0, rest.indexOf('&preview=1')) :
+              pdfviewMode ? rest.slice(0, rest.indexOf('&pdfview=1')) : rest;
     if (!b64 || b64.length < 10) return;
     _decodeSwimHash(b64).then(function(json) {
       var data = safeParse(json);
       history.replaceState(null, '', window.location.pathname + window.location.search);
       try { sessionStorage.setItem('_swimBackup', json); } catch(e){}
       if (pdfMode) {
-        // PDF herunterladen, danach Dokumentansicht zeigen (wie "öffnen")
+        // PDF herunterladen, danach Bestätigung zeigen (kein doc-view)
         applyPlanData(data);
         if (!sections || !sections.length) return;
-        window._pdfOpenInTab = false;
         window._onPdfDone = function() {
           if (window.__pdfMarkDone) window.__pdfMarkDone();
           var pdfOv = document.getElementById('pdfModeOverlay');
+          if (pdfOv) {
+            pdfOv.innerHTML = '<div style="text-align:center;padding:40px">'
+              + '<div style="font-size:52px;margin-bottom:16px">✓</div>'
+              + '<div style="font-size:20px;font-weight:600;color:#1a3a5c;margin-bottom:24px">PDF heruntergeladen</div>'
+              + '<button onclick="window.history.back()" style="background:#1a3a5c;color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:15px;cursor:pointer">← Zurück</button>'
+              + '</div>';
+          }
+        };
+        setTimeout(function() { doExportPDF(); }, 500);
+      } else if (pdfviewMode) {
+        // PDF generieren + eingebettet anzeigen
+        applyPlanData(data);
+        if (!sections || !sections.length) return;
+        window._pdfEmbedMode = true;
+        window._onPdfEmbedReady = function(blobUrl, filename) {
+          if (window.__pdfMarkDone) window.__pdfMarkDone();
+          var pdfOv = document.getElementById('pdfModeOverlay');
           if (pdfOv) pdfOv.style.display = 'none';
-          switchMode('doc');
-          var tb = document.getElementById('toolbar'); if (tb) tb.style.display = 'none';
-          var deb2 = document.getElementById('docEditBtn'); if (deb2) deb2.style.display = 'none';
-          var vdb = document.getElementById('viewDownloadBtn');
-          if (vdb) { vdb.style.display = ''; vdb.onclick = function() { doExportPDF(); }; }
+          var embedView = document.getElementById('pdfEmbedView');
+          var embedFrame = document.getElementById('pdfEmbedFrame');
+          var dlBtn = document.getElementById('pdfEmbedDownload');
+          var backBtn = document.getElementById('pdfEmbedBack');
+          if (embedFrame) embedFrame.src = blobUrl;
+          if (dlBtn) dlBtn.onclick = function() {
+            var a = document.createElement('a'); a.href = blobUrl; a.download = filename;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          };
+          if (backBtn) backBtn.onclick = function() { window.history.back(); };
+          if (embedView) embedView.style.display = 'flex';
         };
         setTimeout(function() { doExportPDF(); }, 500);
       } else if (previewMode) {
