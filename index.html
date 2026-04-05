@@ -267,7 +267,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
     var o=document.getElementById('pdfModeOverlay');
     if(o){
       o.style.display='flex';
-      if(isPreview||isPdfView){var kids=o.children;for(var i=1;i<kids.length;i++)kids[i].style.display='none';}
+      if(isPreview){var kids=o.children;for(var i=1;i<kids.length;i++)kids[i].style.display='none';}
+      if(isPdfView){var sub=o.children[2];if(sub)sub.textContent='PDF wird geöffnet';}
     }
   } else if(isGH&&(!h||isPlainQR)){
     var p=document.getElementById('indexPwOverlay');if(p)p.style.display='flex';
@@ -3620,7 +3621,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
           var embedFrame = document.getElementById('pdfEmbedFrame');
           var dlBtn = document.getElementById('pdfEmbedDownload');
           var backBtn = document.getElementById('pdfEmbedBack');
-          if (embedFrame) embedFrame.src = blobUrl + '#zoom=page-fit';
+          if (embedFrame) embedFrame.src = blobUrl + '#view=Fit';
           if (dlBtn) dlBtn.onclick = function() {
             var a = document.createElement('a'); a.href = blobUrl; a.download = filename;
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
