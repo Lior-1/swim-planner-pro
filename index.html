@@ -3727,45 +3727,59 @@ body.pdf-embed-open{overflow:hidden}
           var dlBtn = document.getElementById('pdfEmbedDownload');
           var backBtn = document.getElementById('pdfEmbedBack');
           var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-          // PDF.js: blob.arrayBuffer() direkt (kein fetch nötig — funktioniert auf iOS Safari)
           if (embedFrame) {
-            embedFrame.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-family:monospace;font-size:13px;">Seiten werden geladen\u2026</div>';
-            var abPromise = (pdfBlob && typeof pdfBlob.arrayBuffer === 'function')
-              ? pdfBlob.arrayBuffer()
-              : fetch(blobUrl).then(function(r){ return r.arrayBuffer(); });
-            abPromise.then(function(ab){
-              pdfjsLib.GlobalWorkerOptions.workerSrc =
-                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-              // Mobile: Download aus frischem Blob (unabhängig vom original blobUrl)
-              if (isMobile) {
-                var dlBlob = new Blob([ab.slice(0)], { type: 'application/pdf' });
-                var dlUrl = URL.createObjectURL(dlBlob);
-                var dlA = document.createElement('a'); dlA.href = dlUrl; dlA.download = filename;
-                document.body.appendChild(dlA); dlA.click(); document.body.removeChild(dlA);
-                setTimeout(function(){ URL.revokeObjectURL(dlUrl); }, 60000);
-              }
-              return pdfjsLib.getDocument({ data: ab }).promise;
-            }).then(function(pdf){
+            if (isMobile) {
+              // Mobile (iOS/Android): <object> Tag — iOS rendert PDF nativ ohne PDF.js
+              embedFrame.style.cssText += ';padding:0;';
+              var obj = document.createElement('object');
+              obj.data = blobUrl;
+              obj.type = 'application/pdf';
+              obj.style.cssText = 'width:100%;height:100%;border:none;';
+              // Fallback für ältere iOS: Download-Button + Hinweis
+              obj.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;text-align:center;padding:32px;gap:16px">'
+                + '<div style="font-size:40px">\uD83D\uDCC4</div>'
+                + '<div style="font-size:16px;font-weight:600">PDF bereit</div>'
+                + '<div style="font-size:13px;color:#aaa;margin-bottom:8px">Tippe auf \u201E\u2193 PDF herunterladen\u201C um die PDF zu \u00F6ffnen</div>'
+                + '</div>';
               embedFrame.innerHTML = '';
-              var containerW = Math.min(embedFrame.clientWidth - 40, 900);
-              var renderPage = function(num) {
-                pdf.getPage(num).then(function(page){
-                  var vp0 = page.getViewport({ scale: 1 });
-                  var scale = containerW / vp0.width;
-                  var vp = page.getViewport({ scale: scale });
-                  var canvas = document.createElement('canvas');
-                  canvas.width = vp.width;
-                  canvas.height = vp.height;
-                  canvas.style.cssText = 'display:block;margin:0 auto 16px;border-radius:2px;box-shadow:0 2px 14px rgba(0,0,0,.6);background:#fff;';
-                  embedFrame.appendChild(canvas);
-                  page.render({ canvasContext: canvas.getContext('2d'), viewport: vp });
-                  if (num < pdf.numPages) renderPage(num + 1);
-                });
-              };
-              renderPage(1);
-            }).catch(function(){
-              embedFrame.innerHTML = '<div style="color:#e74c3c;text-align:center;padding:40px;font-family:monospace;">Fehler beim Laden der PDF</div>';
-            });
+              embedFrame.appendChild(obj);
+              // Automatisch herunterladen auf Mobile
+              setTimeout(function() {
+                var dlA = document.createElement('a'); dlA.href = blobUrl; dlA.download = filename;
+                document.body.appendChild(dlA); dlA.click(); document.body.removeChild(dlA);
+              }, 800);
+            } else {
+              // Desktop: PDF.js Canvas-Rendering
+              embedFrame.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-family:monospace;font-size:13px;">Seiten werden geladen\u2026</div>';
+              var abPromise = (pdfBlob && typeof pdfBlob.arrayBuffer === 'function')
+                ? pdfBlob.arrayBuffer()
+                : fetch(blobUrl).then(function(r){ return r.arrayBuffer(); });
+              abPromise.then(function(ab){
+                pdfjsLib.GlobalWorkerOptions.workerSrc =
+                  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                return pdfjsLib.getDocument({ data: ab }).promise;
+              }).then(function(pdf){
+                embedFrame.innerHTML = '';
+                var containerW = Math.min(embedFrame.clientWidth - 40, 900);
+                var renderPage = function(num) {
+                  pdf.getPage(num).then(function(page){
+                    var vp0 = page.getViewport({ scale: 1 });
+                    var scale = containerW / vp0.width;
+                    var vp = page.getViewport({ scale: scale });
+                    var canvas = document.createElement('canvas');
+                    canvas.width = vp.width;
+                    canvas.height = vp.height;
+                    canvas.style.cssText = 'display:block;margin:0 auto 16px;border-radius:2px;box-shadow:0 2px 14px rgba(0,0,0,.6);background:#fff;';
+                    embedFrame.appendChild(canvas);
+                    page.render({ canvasContext: canvas.getContext('2d'), viewport: vp });
+                    if (num < pdf.numPages) renderPage(num + 1);
+                  });
+                };
+                renderPage(1);
+              }).catch(function(){
+                embedFrame.innerHTML = '<div style="color:#e74c3c;text-align:center;padding:40px;font-family:monospace;">Fehler beim Laden der PDF</div>';
+              });
+            }
           }
           if (dlBtn) dlBtn.onclick = function() {
             var a = document.createElement('a'); a.href = blobUrl; a.download = filename;
