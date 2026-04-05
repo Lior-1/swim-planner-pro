@@ -12,7 +12,7 @@ Ein professioneller Schwimmtrainingsplaner als Single-Page-Webanwendung. Erstell
 - **Vorschau** — Druckfertige Dokumentansicht mit automatischer Seitenaufteilung
 - **PDF-Export** — Pixelgenaue A4-PDFs mit eingebettetem QR-Code und Plandaten
 - **Drucken** — Optimiertes Print-Layout mit mehrseitigem Support
-- **Word-Export** — Trainingspläne als Word-Dokument (.docx)
+- **Word-Export**(in arbeit) — Trainingspläne als Word-Dokument (.docx)
 - **QR-Code-Sharing** — Kompletter Trainingsplan im QR-Code, kein Server nötig
 - **Kompression** — Deflate-Komprimierung für kompaktere QR-Codes (Z.-Prefix)
 - **Dark Mode** — Umschaltbar zwischen Hell und Dunkel
@@ -51,7 +51,7 @@ Die Anwendung ist passwortgeschützt. Der Schutz basiert auf:
 - **Template-Gate:** Der gesamte App-Inhalt liegt in einem `<template>`-Element und wird erst nach korrekter Passworteingabe in den DOM injiziert
 - **SHA-256-Hash:** Kein Klartext-Passwort im Quellcode
 - **Anti-Tamper:** MutationObserver erkennt Manipulation des Passwort-Overlays via DevTools
-- **QR-Bypass:** Links mit `#SWIMQR:`-Hash umgehen den Schutz (gewollt, da der Plan bereits im Link enthalten ist)
+
 
 ## Lizenz
 
