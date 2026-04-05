@@ -3620,7 +3620,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
           var embedFrame = document.getElementById('pdfEmbedFrame');
           var dlBtn = document.getElementById('pdfEmbedDownload');
           var backBtn = document.getElementById('pdfEmbedBack');
-          if (embedFrame) embedFrame.src = blobUrl;
+          if (embedFrame) embedFrame.src = blobUrl + '#zoom=page-fit';
           if (dlBtn) dlBtn.onclick = function() {
             var a = document.createElement('a'); a.href = blobUrl; a.download = filename;
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
