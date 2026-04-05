@@ -3617,6 +3617,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
           if (window.__pdfMarkDone) window.__pdfMarkDone();
           var pdfOv = document.getElementById('pdfModeOverlay');
           if (pdfOv) pdfOv.style.display = 'none';
+          // Mobile: direkt öffnen (Safari/Chrome nativer PDF-Viewer mit korrektem Zoom)
+          var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+          if (isMobile) { window.location.href = blobUrl; return; }
+          // Desktop: eingebettet im iframe anzeigen
           var embedView = document.getElementById('pdfEmbedView');
           var embedFrame = document.getElementById('pdfEmbedFrame');
           var dlBtn = document.getElementById('pdfEmbedDownload');
