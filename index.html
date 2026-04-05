@@ -3701,7 +3701,7 @@ body.pdf-embed-open{overflow:hidden}
             pdfOv.innerHTML = '<div style="text-align:center;padding:40px">'
               + '<div style="font-size:52px;margin-bottom:16px">✓</div>'
               + '<div style="font-size:20px;font-weight:600;color:#1a3a5c;margin-bottom:24px">PDF heruntergeladen</div>'
-              + '<button onclick="window.history.back()" style="background:#1a3a5c;color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:15px;cursor:pointer">← Zurück</button>'
+              + '<button onclick="(function(){var h=window.location.hash,r=h.indexOf(\'#SWIMQR:\')===0?h.slice(8):\'\',b=r.indexOf(\'&\')!==-1?r.slice(0,r.indexOf(\'&\')):r;window.location.replace(window.location.origin+window.location.pathname.replace(/[^/]*$/,\'\')+\'viewer.html#SWIMQR:\'+b);})()" style="background:#1a3a5c;color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:15px;cursor:pointer">← Zurück</button>'
               + '</div>';
           }
         };
@@ -3710,6 +3710,13 @@ body.pdf-embed-open{overflow:hidden}
         // PDF generieren + eingebettet anzeigen
         applyPlanData(data);
         if (!sections || !sections.length) return;
+        // Doc-Modus aktivieren: Editor hinter pdfEmbedView unsichtbar
+        if (typeof switchMode === 'function') switchMode('doc');
+        // Viewer-URL für Back-Navigation berechnen (verhindert history.back() BFCache-Exploit)
+        var _pvHash = window.location.hash;
+        var _pvRaw = _pvHash.indexOf('#SWIMQR:') === 0 ? _pvHash.slice(8) : '';
+        var _pvB64 = _pvRaw.indexOf('&') !== -1 ? _pvRaw.slice(0, _pvRaw.indexOf('&')) : _pvRaw;
+        var _pvViewerUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '') + 'viewer.html#SWIMQR:' + _pvB64;
         window._pdfEmbedMode = true;
         window._onPdfEmbedReady = function(blobUrl, filename) {
           if (window.__pdfMarkDone) window.__pdfMarkDone();
@@ -3720,32 +3727,12 @@ body.pdf-embed-open{overflow:hidden}
           var dlBtn = document.getElementById('pdfEmbedDownload');
           var backBtn = document.getElementById('pdfEmbedBack');
           var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+          // Mobile: PDF zusätzlich herunterladen (nativer Viewer kann Blob-URL nicht öffnen)
           if (isMobile) {
-            // Mobile: Download triggern (kein window.location → kein BFCache-Exploit)
             var a = document.createElement('a'); a.href = blobUrl; a.download = filename;
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            // Bestätigungs-Anzeige statt iframe
-            var msgDiv = document.createElement('div');
-            msgDiv.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#fff;text-align:center;padding:40px';
-            msgDiv.innerHTML = '<div style="font-size:48px;margin-bottom:16px">✓</div>'
-              + '<div style="font-size:18px;font-weight:600;margin-bottom:8px">PDF heruntergeladen</div>'
-              + '<div style="font-size:13px;color:#aaa">Öffne die PDF in der Dateien-App</div>';
-            if (embedView) embedView.appendChild(msgDiv);
-            if (dlBtn) dlBtn.onclick = function() {
-              var a2 = document.createElement('a'); a2.href = blobUrl; a2.download = filename;
-              document.body.appendChild(a2); a2.click(); document.body.removeChild(a2);
-            };
-            if (backBtn) backBtn.onclick = function() {
-              document.body.classList.remove('pdf-embed-open');
-              if (window.__pdfEmbedDone) window.__pdfEmbedDone();
-              window.history.back();
-            };
-            if (embedView) embedView.style.display = 'flex';
-            document.body.classList.add('pdf-embed-open');
-            if (window.__pdfEmbedShown) window.__pdfEmbedShown();
-            return;
           }
-          // Desktop: PDF.js Canvas-Rendering (kein nativer Browser-Viewer)
+          // Mobile + Desktop: PDF.js Canvas-Rendering (kein nativer Browser-Viewer)
           if (embedFrame) {
             embedFrame.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-family:monospace;font-size:13px;">Seiten werden geladen\u2026</div>';
             fetch(blobUrl).then(function(r){ return r.arrayBuffer(); }).then(function(ab){
@@ -3781,7 +3768,7 @@ body.pdf-embed-open{overflow:hidden}
           if (backBtn) backBtn.onclick = function() {
             document.body.classList.remove('pdf-embed-open');
             if (window.__pdfEmbedDone) window.__pdfEmbedDone();
-            window.history.back();
+            window.location.replace(_pvViewerUrl);
           };
           if (embedView) embedView.style.display = 'flex';
           document.body.classList.add('pdf-embed-open');
