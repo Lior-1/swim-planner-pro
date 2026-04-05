@@ -220,6 +220,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
   .tb-btn{padding:4px 8px;font-size:8px}
   .tb-sep{margin:0 5px}
 }
+/* PDF Embed View — dunkler Scrollbalken */
+#pdfEmbedFrame::-webkit-scrollbar{width:6px}
+#pdfEmbedFrame::-webkit-scrollbar-track{background:#444}
+#pdfEmbedFrame::-webkit-scrollbar-thumb{background:#666;border-radius:3px}
+/* Kein Body-Scroll wenn PDF-Ansicht offen */
+body.pdf-embed-open{overflow:hidden}
 </style>
 </head>
 <body data-theme="light">
@@ -236,7 +242,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
     <button id="pdfEmbedDownload" style="background:#1a3a5c;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer">↓ PDF herunterladen</button>
   </div>
   <div id="pdfEmbedFrame" style="flex:1;overflow-y:auto;overflow-x:hidden;background:#444;padding:20px 0;scrollbar-color:#666 #444;scrollbar-width:thin;"></div>
-  <style>#pdfEmbedFrame::-webkit-scrollbar{width:6px}#pdfEmbedFrame::-webkit-scrollbar-track{background:#444}#pdfEmbedFrame::-webkit-scrollbar-thumb{background:#666;border-radius:3px}</style>
 </div>
 <!-- Passwort-Schutz (nur auf GitHub, nicht lokal) -->
 <div id="indexPwOverlay" style="display:none;position:fixed;inset:0;z-index:10001;background:#f5f4ef;align-items:center;justify-content:center;">
@@ -3728,10 +3733,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
               document.body.appendChild(a2); a2.click(); document.body.removeChild(a2);
             };
             if (backBtn) backBtn.onclick = function() {
+              document.body.classList.remove('pdf-embed-open');
               if (window.__pdfEmbedDone) window.__pdfEmbedDone();
               window.history.back();
             };
             if (embedView) embedView.style.display = 'flex';
+            document.body.classList.add('pdf-embed-open');
             if (window.__pdfEmbedShown) window.__pdfEmbedShown();
             return;
           }
@@ -3769,10 +3776,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
           };
           if (backBtn) backBtn.onclick = function() {
+            document.body.classList.remove('pdf-embed-open');
             if (window.__pdfEmbedDone) window.__pdfEmbedDone();
             window.history.back();
           };
           if (embedView) embedView.style.display = 'flex';
+          document.body.classList.add('pdf-embed-open');
           if (window.__pdfEmbedShown) window.__pdfEmbedShown();
         };
         setTimeout(function() { doExportPDF(); }, 500);
