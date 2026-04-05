@@ -254,7 +254,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
 <script>function _vqrb64(s){if(!s||s.length<32)return false;try{if(s.indexOf('Z.')===0)return s.length>55&&/^[A-Za-z0-9+/=]+$/.test(s.slice(2));if(!/^[A-Za-z0-9+/=]+$/.test(s))return false;var d=atob(s);return d.charCodeAt(0)===123&&(d.indexOf('"sections"')>-1||d.indexOf('"s":[')>-1);}catch(e){return false;}}</script>
 <script>(function(){
   var h=window.location.hash||'';
-  var isGH=true;
+  var isGH=window.location.hostname==='lior-1.github.io';
   var _qrRaw=h.indexOf('#SWIMQR:')===0?h.slice(8):'';
   var _qrB64=_qrRaw.indexOf('&')!==-1?_qrRaw.slice(0,_qrRaw.indexOf('&')):_qrRaw;
   var _validQR=_vqrb64(_qrB64);
@@ -472,7 +472,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
 (function(){
   var PW_HASH = '70dc4c90b02bb6bf669117dbc5a9a3a5c7bf90a4422f8ca46b0b6c6c2432b7cd';
   var h = window.location.hash || '';
-  var isGH = window.location.hostname === 'lior-1.github.io';
+  var isGH = true;
   var _qrRawA=h.indexOf('#SWIMQR:')===0?h.slice(8):'';
   var _qrB64A=_qrRawA.indexOf('&')!==-1?_qrRawA.slice(0,_qrRawA.indexOf('&')):_qrRawA;
   var isQR=_vqrb64(_qrB64A)&&(h.indexOf('&pdf=1')!==-1||h.indexOf('&view=1')!==-1||h.indexOf('&preview=1')!==-1||h.indexOf('&pdfview=1')!==-1);
@@ -553,6 +553,70 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
       new MutationObserver(function() {
         if (!pdfDone && pdfOv2.style.display === 'none') tampered2();
       }).observe(pdfOv2, { attributes: true, attributeFilter: ['style', 'class'] });
+    }
+  }
+
+  // Anti-Tamper für &pdfview=1 — schützt pdfModeOverlay + pdfEmbedView
+  var isPdfViewMode = isQR && h.indexOf('&pdfview=1') !== -1;
+  if (isGH && isPdfViewMode) {
+    var pvDone = false;   // pdfModeOverlay guard-flag (gesetzt wenn PDF fertig)
+    var peShown = false;  // pdfEmbedView guard aktiv ab diesem Punkt
+    var peDone = false;   // pdfEmbedView guard deaktiviert (legitimer Zurück-Klick)
+
+    Object.defineProperty(window, '__pdfMarkDone', {
+      value: function() { pvDone = true; }, writable: false, configurable: false
+    });
+    Object.defineProperty(window, '__pdfEmbedShown', {
+      value: function() { peShown = true; }, writable: false, configurable: false
+    });
+    Object.defineProperty(window, '__pdfEmbedDone', {
+      value: function() { peDone = true; }, writable: false, configurable: false
+    });
+
+    var pdfOvPV = document.getElementById('pdfModeOverlay');
+    var embedElPV = document.getElementById('pdfEmbedView');
+    var tampered3 = function() {
+      var tpl3 = document.getElementById('appTemplate');
+      if (tpl3) tpl3.remove();
+      document.body.innerHTML = '<div style="text-align:center;padding:100px;font-family:monospace;color:#c0392b;font-size:18px;">Zugriff verweigert</div>';
+    };
+
+    // Guard 1a: pdfModeOverlay aus DOM entfernt?
+    new MutationObserver(function(muts) {
+      for (var i = 0; i < muts.length; i++) {
+        for (var j = 0; j < muts[i].removedNodes.length; j++) {
+          var n = muts[i].removedNodes[j];
+          if (n.id === 'pdfModeOverlay' || (n.querySelector && n.querySelector('#pdfModeOverlay'))) {
+            if (!pvDone) { tampered3(); return; }
+          }
+        }
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+    // Guard 1b: pdfModeOverlay auf display:none gesetzt?
+    if (pdfOvPV) {
+      new MutationObserver(function() {
+        if (!pvDone && pdfOvPV.style.display === 'none') tampered3();
+      }).observe(pdfOvPV, { attributes: true, attributeFilter: ['style', 'class'] });
+    }
+
+    // Guard 2a: pdfEmbedView aus DOM entfernt?
+    new MutationObserver(function(muts) {
+      if (!peShown) return;
+      for (var i = 0; i < muts.length; i++) {
+        for (var j = 0; j < muts[i].removedNodes.length; j++) {
+          var n = muts[i].removedNodes[j];
+          if (n.id === 'pdfEmbedView' || (n.querySelector && n.querySelector('#pdfEmbedView'))) {
+            if (!peDone) { tampered3(); return; }
+          }
+        }
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+    // Guard 2b: pdfEmbedView auf display:none gesetzt?
+    if (embedElPV) {
+      new MutationObserver(function() {
+        if (!peShown || peDone) return;
+        if (embedElPV.style.display === 'none') tampered3();
+      }).observe(embedElPV, { attributes: true, attributeFilter: ['style', 'class'] });
     }
   }
 
@@ -3597,9 +3661,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
         applyPlanData(data);
         if (!sections || !sections.length) return;
         window._onPdfDone = function() {
-          if (window.__pdfMarkDone) window.__pdfMarkDone();
+          // Kein __pdfMarkDone() — Guard bleibt aktiv (Overlay bleibt display:flex)
           var pdfOv = document.getElementById('pdfModeOverlay');
           if (pdfOv) {
+            // Nur innerHTML ändern, display bleibt 'flex' → Observer 2 feuert nicht
             pdfOv.innerHTML = '<div style="text-align:center;padding:40px">'
               + '<div style="font-size:52px;margin-bottom:16px">✓</div>'
               + '<div style="font-size:20px;font-weight:600;color:#1a3a5c;margin-bottom:24px">PDF heruntergeladen</div>'
@@ -3617,21 +3682,46 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
           if (window.__pdfMarkDone) window.__pdfMarkDone();
           var pdfOv = document.getElementById('pdfModeOverlay');
           if (pdfOv) pdfOv.style.display = 'none';
-          // Mobile: direkt öffnen (Safari/Chrome nativer PDF-Viewer mit korrektem Zoom)
-          var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-          if (isMobile) { window.location.href = blobUrl; return; }
-          // Desktop: eingebettet im iframe anzeigen
           var embedView = document.getElementById('pdfEmbedView');
           var embedFrame = document.getElementById('pdfEmbedFrame');
           var dlBtn = document.getElementById('pdfEmbedDownload');
           var backBtn = document.getElementById('pdfEmbedBack');
+          var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+          if (isMobile) {
+            // Mobile: Download triggern (kein window.location → kein BFCache-Exploit)
+            var a = document.createElement('a'); a.href = blobUrl; a.download = filename;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            // Bestätigungs-Anzeige statt iframe
+            var msgDiv = document.createElement('div');
+            msgDiv.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#fff;text-align:center;padding:40px';
+            msgDiv.innerHTML = '<div style="font-size:48px;margin-bottom:16px">✓</div>'
+              + '<div style="font-size:18px;font-weight:600;margin-bottom:8px">PDF heruntergeladen</div>'
+              + '<div style="font-size:13px;color:#aaa">Öffne die PDF in der Dateien-App</div>';
+            if (embedView) embedView.appendChild(msgDiv);
+            if (dlBtn) dlBtn.onclick = function() {
+              var a2 = document.createElement('a'); a2.href = blobUrl; a2.download = filename;
+              document.body.appendChild(a2); a2.click(); document.body.removeChild(a2);
+            };
+            if (backBtn) backBtn.onclick = function() {
+              if (window.__pdfEmbedDone) window.__pdfEmbedDone();
+              window.history.back();
+            };
+            if (embedView) embedView.style.display = 'flex';
+            if (window.__pdfEmbedShown) window.__pdfEmbedShown();
+            return;
+          }
+          // Desktop: eingebettet im iframe anzeigen
           if (embedFrame) embedFrame.src = blobUrl + '#view=Fit';
           if (dlBtn) dlBtn.onclick = function() {
             var a = document.createElement('a'); a.href = blobUrl; a.download = filename;
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
           };
-          if (backBtn) backBtn.onclick = function() { window.history.back(); };
+          if (backBtn) backBtn.onclick = function() {
+            if (window.__pdfEmbedDone) window.__pdfEmbedDone();
+            window.history.back();
+          };
           if (embedView) embedView.style.display = 'flex';
+          if (window.__pdfEmbedShown) window.__pdfEmbedShown();
         };
         setTimeout(function() { doExportPDF(); }, 500);
       } else if (previewMode) {
