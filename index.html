@@ -2305,7 +2305,7 @@ body.pdf-embed-open{overflow:hidden}
         if (window._pdfEmbedMode) {
           window._pdfEmbedMode = false;
           if (typeof window._onPdfEmbedReady === 'function') {
-            window._onPdfEmbedReady(blobUrl, getFilename() + '.pdf');
+            window._onPdfEmbedReady(blobUrl, getFilename() + '.pdf', blob);
           }
           return; // kein Download, kein revokeObjectURL
         }
@@ -3718,7 +3718,7 @@ body.pdf-embed-open{overflow:hidden}
         var _pvB64 = _pvRaw.indexOf('&') !== -1 ? _pvRaw.slice(0, _pvRaw.indexOf('&')) : _pvRaw;
         var _pvViewerUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '') + 'viewer.html#SWIMQR:' + _pvB64;
         window._pdfEmbedMode = true;
-        window._onPdfEmbedReady = function(blobUrl, filename) {
+        window._onPdfEmbedReady = function(blobUrl, filename, pdfBlob) {
           if (window.__pdfMarkDone) window.__pdfMarkDone();
           var pdfOv = document.getElementById('pdfModeOverlay');
           if (pdfOv) pdfOv.style.display = 'none';
@@ -3727,13 +3727,16 @@ body.pdf-embed-open{overflow:hidden}
           var dlBtn = document.getElementById('pdfEmbedDownload');
           var backBtn = document.getElementById('pdfEmbedBack');
           var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-          // PDF.js Canvas-Rendering — erst fetch, dann rendern, dann (Mobile) Download triggern
+          // PDF.js: blob.arrayBuffer() direkt (kein fetch nötig — funktioniert auf iOS Safari)
           if (embedFrame) {
             embedFrame.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-family:monospace;font-size:13px;">Seiten werden geladen\u2026</div>';
-            fetch(blobUrl).then(function(r){ return r.arrayBuffer(); }).then(function(ab){
+            var abPromise = (pdfBlob && typeof pdfBlob.arrayBuffer === 'function')
+              ? pdfBlob.arrayBuffer()
+              : fetch(blobUrl).then(function(r){ return r.arrayBuffer(); });
+            abPromise.then(function(ab){
               pdfjsLib.GlobalWorkerOptions.workerSrc =
                 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-              // Mobile: Download aus frischem Blob (NACH fetch, VOR iOS-Fenster-Öffnung)
+              // Mobile: Download aus frischem Blob (unabhängig vom original blobUrl)
               if (isMobile) {
                 var dlBlob = new Blob([ab.slice(0)], { type: 'application/pdf' });
                 var dlUrl = URL.createObjectURL(dlBlob);
