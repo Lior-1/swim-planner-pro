@@ -235,7 +235,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
     <button id="pdfEmbedBack" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:4px;padding:6px 12px;font-size:13px;cursor:pointer">← Zurück</button>
     <button id="pdfEmbedDownload" style="background:#1a3a5c;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer">↓ PDF herunterladen</button>
   </div>
-  <iframe id="pdfEmbedFrame" style="flex:1;width:100%;border:none;"></iframe>
+  <div id="pdfEmbedFrame" style="flex:1;overflow-y:auto;background:#444;padding:20px 0;"></div>
 </div>
 <!-- Passwort-Schutz (nur auf GitHub, nicht lokal) -->
 <div id="indexPwOverlay" style="display:none;position:fixed;inset:0;z-index:10001;background:#f5f4ef;align-items:center;justify-content:center;">
@@ -3710,8 +3710,35 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
             if (window.__pdfEmbedShown) window.__pdfEmbedShown();
             return;
           }
-          // Desktop: eingebettet im iframe anzeigen
-          if (embedFrame) embedFrame.src = blobUrl + '#view=Fit';
+          // Desktop: PDF.js Canvas-Rendering (kein nativer Browser-Viewer)
+          if (embedFrame) {
+            embedFrame.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-family:monospace;font-size:13px;">Seiten werden geladen\u2026</div>';
+            fetch(blobUrl).then(function(r){ return r.arrayBuffer(); }).then(function(ab){
+              pdfjsLib.GlobalWorkerOptions.workerSrc =
+                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+              return pdfjsLib.getDocument({ data: ab }).promise;
+            }).then(function(pdf){
+              embedFrame.innerHTML = '';
+              var containerW = Math.min(embedFrame.offsetWidth - 40, 900);
+              var renderPage = function(num) {
+                pdf.getPage(num).then(function(page){
+                  var vp0 = page.getViewport({ scale: 1 });
+                  var scale = containerW / vp0.width;
+                  var vp = page.getViewport({ scale: scale });
+                  var canvas = document.createElement('canvas');
+                  canvas.width = vp.width;
+                  canvas.height = vp.height;
+                  canvas.style.cssText = 'display:block;margin:0 auto 16px;border-radius:2px;box-shadow:0 2px 14px rgba(0,0,0,.6);background:#fff;';
+                  embedFrame.appendChild(canvas);
+                  page.render({ canvasContext: canvas.getContext('2d'), viewport: vp });
+                  if (num < pdf.numPages) renderPage(num + 1);
+                });
+              };
+              renderPage(1);
+            }).catch(function(){
+              embedFrame.innerHTML = '<div style="color:#e74c3c;text-align:center;padding:40px;font-family:monospace;">Fehler beim Laden der PDF</div>';
+            });
+          }
           if (dlBtn) dlBtn.onclick = function() {
             var a = document.createElement('a'); a.href = blobUrl; a.download = filename;
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
