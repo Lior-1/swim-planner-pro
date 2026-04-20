@@ -384,6 +384,8 @@ body.pdf-embed-open{overflow:hidden}
           <option value="robben">Robben (Bronze)</option>
           <option value="delphine">Delphine (Silber)</option>
           <option value="haie">Haie (Gold)</option>
+          <option value="tg4">TG4 (Gold)</option>
+          <option value="tg3">TG3 (Gold+)</option>
           <option value="tgb">TGB (Gold)</option>
           <option value="other">Sonstiges...</option>
         </select>
@@ -735,22 +737,22 @@ body.pdf-embed-open{overflow:hidden}
   // ---- CONSTANTS ----
   var EXERCISES = ['Kraul','Brust','Rücken','Delfin','Lagen','Kraul Beine','Brust Beine','Pull','Kickboard','Sonstiges'];
   // Seconds per 100m fallback per group (used if no stroke match)
-  var GROUP_SPEEDS = {robben:270, delphine:195, haie:135, tgb:105, other:195};
-  var GROUP_LABELS = {robben:'Robben', delphine:'Delphine', haie:'Haie', tgb:'TGB', other:''};
-  var GROUP_LABELS_FULL = {robben:'Robben (Bronze)', delphine:'Delphine (Silber)', haie:'Haie (Gold)', tgb:'TGB (Gold)', other:''};
-  var GROUP_SPEED_LABELS = {robben:'4:30', delphine:'3:15', haie:'2:15', tgb:'1:45', other:'3:15'};
+  var GROUP_SPEEDS = {robben:270, delphine:195, haie:135, tg3:115, tg4:135, tgb:105, other:195};
+  var GROUP_LABELS = {robben:'Robben', delphine:'Delphine', haie:'Haie', tg3:'TG3', tg4:'TG4', tgb:'TGB', other:''};
+  var GROUP_LABELS_FULL = {robben:'Robben (Bronze)', delphine:'Delphine (Silber)', haie:'Haie (Gold)', tg3:'TG3 (Gold+)', tg4:'TG4 (Gold)', tgb:'TGB (Gold)', other:''};
+  var GROUP_SPEED_LABELS = {robben:'4:30', delphine:'3:15', haie:'2:15', tg3:'1:55', tg4:'2:15', tgb:'1:45', other:'3:15'};
 
   // Per-stroke speeds: seconds per 50m, keyed by group, then stroke key
   // Realistic times: robben=beginner, delphine=intermediate, haie=advanced, tgb=competitive
   var DEFAULT_STROKE_SPEEDS = {
     // Seconds per 50m – adjusted reference
-    brust:    {robben:158, delphine:132, haie:105, tgb:88,  other:132},
-    ruecken:  {robben:172, delphine:141, haie:114, tgb:92,  other:141},
-    kraul:    {robben:145, delphine:119, haie:92,  tgb:75,  other:119},
-    delfin:   {robben:185, delphine:158, haie:132, tgb:105, other:158},
-    lagen:    {robben:167, delphine:139, haie:112, tgb:91,  other:139},
-    beine:    {robben:211, delphine:185, haie:150, tgb:119, other:185},
-    pull:     {robben:158, delphine:132, haie:101, tgb:84,  other:132},
+    brust:   {robben:158, delphine:132, haie:105, tg3:96,  tg4:105, tgb:88,  other:132},
+    ruecken: {robben:172, delphine:141, haie:114, tg3:103, tg4:114, tgb:92,  other:141},
+    kraul:   {robben:145, delphine:119, haie:92,  tg3:83,  tg4:92,  tgb:75,  other:119},
+    delfin:  {robben:185, delphine:158, haie:132, tg3:118, tg4:132, tgb:105, other:158},
+    lagen:   {robben:167, delphine:139, haie:112, tg3:101, tg4:112, tgb:91,  other:139},
+    beine:   {robben:211, delphine:185, haie:150, tg3:134, tg4:150, tgb:119, other:185},
+    pull:    {robben:158, delphine:132, haie:101, tg3:92,  tg4:101, tgb:84,  other:132},
   };
   // User-customized stroke speeds (seconds per 50m), overrides defaults
   var customStrokeSpeeds = {};
@@ -1027,7 +1029,7 @@ body.pdf-embed-open{overflow:hidden}
   function getFilename() {
     var title = (document.getElementById('hTitle').value || 'Schwimmtraining').trim();
     var goal = (document.getElementById('hGoal') ? document.getElementById('hGoal').value.trim() : '');
-    var dateVal = (document.getElementById('hDate').value || '').replace(/^[A-Za-zÄÖÜäöü]+\.\s*/,'').replace(/\./g,'-');
+    var dateVal = (document.getElementById('hDate').value || '').replace(/^[A-Za-zÄÖÜäöü]+\.\s*/,'');
     var parts = [title];
     if (goal) parts.push(goal);
     if (dateVal) parts.push('(' + dateVal + ')');
