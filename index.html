@@ -91,7 +91,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
 [data-theme=dark] .field-select option,[data-theme=dark] .cell-sel option{background:#1e1e1e}
 .notes-row{display:flex;flex-direction:column;gap:4px;margin-bottom:0}
 .notes-label{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:2px;color:var(--text3)}
-.notes-input{font-family:var(--serif);font-size:14px;border:none;border-bottom:1px solid var(--border2);background:transparent;color:var(--text);padding:4px 0;outline:none;width:100%}
+.notes-input{font-family:var(--serif);font-size:14px;border:none;border-bottom:1px solid var(--border2);background:transparent;color:var(--text);padding:4px 0;outline:none;width:100%;resize:none;overflow:hidden;line-height:1.4;min-height:1.6em;display:block}
 .notes-input::placeholder,.field-input::placeholder{color:var(--text3);font-style:italic}
 
 .stats-bar{background:var(--text);color:var(--surface);border-radius:4px;padding:14px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
@@ -103,10 +103,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
 [data-theme=dark] .stat-lbl{color:#888;opacity:1;}
 .speed-label{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px;text-align:right}
 
-.section-block{background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;box-shadow:var(--shadow);transition:border-color .15s,opacity .15s}
-.section-block.drag-over{border-color:var(--accent);background:var(--accent-bg)}
-.section-block.dragging{opacity:.3}
-.section-head{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);border-radius:4px 4px 0 0;user-select:none}
+.section-block{background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;box-shadow:var(--shadow);transition:border-color .15s,opacity .2s}
+.section-block.dragging{display:none}
+.sec-drag-placeholder{margin-bottom:16px;border-radius:4px;border:2px dashed var(--accent);background:var(--accent-bg);opacity:0;height:0;transition:height 0.18s ease,opacity 0.18s ease;pointer-events:none}
+.sec-drag-placeholder.active{opacity:1}
+.section-head{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);border-radius:4px 4px 0 0;user-select:none;cursor:grab}
 .drag-handle{color:var(--text3);font-size:16px;cursor:grab;padding:0 2px;opacity:.5;transition:opacity .15s}
 .drag-handle:hover{opacity:1}
 .section-name-inp{font-family:var(--mono);font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:2px;border:none;outline:none;background:transparent;color:var(--accent);flex:1}
@@ -160,9 +161,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
 .doc-section-head{background:#d8d4cb;border-left:3px solid #1a3a5c;padding:7px 12px;display:flex;justify-content:space-between;align-items:center}
 .doc-section-name{font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#1a3a5c;font-weight:500}
 .doc-section-total{font-family:'DM Mono',monospace;font-size:9px;color:#555}
-.doc-table{width:100%;border-collapse:collapse;margin-bottom:20px}
-.doc-table th{font-family:'DM Mono',monospace;font-size:7.5px;text-transform:uppercase;letter-spacing:1.5px;color:#666;padding:7px 10px;text-align:left;border-bottom:1.5px solid #bbb;font-weight:500}
-.doc-table td{padding:7px 10px;font-size:13px;border-bottom:1px solid #ddd;vertical-align:top;line-height:1.5}
+.doc-table{width:100%;border-collapse:collapse;margin-bottom:20px;table-layout:fixed}
+.doc-table th{font-family:'DM Mono',monospace;font-size:7.5px;text-transform:uppercase;letter-spacing:1.5px;color:#666;padding:7px 10px;text-align:left;border-bottom:1.5px solid #bbb;font-weight:500;overflow:hidden}
+.doc-table td{padding:7px 10px;font-size:13px;border-bottom:1px solid #ddd;vertical-align:top;line-height:1.5;overflow-wrap:break-word;word-break:break-word;overflow:hidden}
 .doc-table tr:last-child td{border-bottom:none}
 .doc-table tr:nth-child(even) td{background:#eeece8}
 .doc-footer{margin-top:32px;padding-top:12px;border-top:0.5px solid #bbb;display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:8px;font-weight:700;color:#333;text-transform:uppercase;letter-spacing:1px}
@@ -400,11 +401,11 @@ body.pdf-embed-open{overflow:hidden}
     <!-- Trainingsziel + Notizen -->
     <div class="notes-row" style="margin-top:10px">
       <span class="notes-label">Trainingsziel</span>
-      <input class="notes-input" id="hGoal" type="text" placeholder="Trainingsziel / Schwerpunkt...">
+      <textarea class="notes-input" id="hGoal" rows="1" placeholder="Trainingsziel / Schwerpunkt..."></textarea>
     </div>
     <div class="notes-row" style="margin-top:8px">
       <span class="notes-label">Notizen</span>
-      <input class="notes-input" id="hNotes" type="text" placeholder="Zusätzliche Notizen...">
+      <textarea class="notes-input" id="hNotes" rows="1" placeholder="Zusätzliche Notizen..."></textarea>
     </div>
     <div class="material-row">
       <span class="mat-label">Material:</span>
@@ -893,6 +894,9 @@ body.pdf-embed-open{overflow:hidden}
   var dragSrcSecId = null;
   var dragSrcRowId = null;
   var isInternalDrag = false;
+  // Section drag – mouse-event based (no HTML5 DnD for sections)
+  var _mds = { active:false, srcId:null, origIdx:-1, insertBefore:undefined,
+               clone:null, placeholder:null, offX:0, offY:0 };
   var modalCb = null;
   var _qrUpdateTimer = null;
   var _docRefreshTimer = null;
@@ -921,6 +925,51 @@ body.pdf-embed-open{overflow:hidden}
       .replace(/&/g,'&amp;')
       .replace(/</g,'&lt;')
       .replace(/>/g,'&gt;');
+  }
+
+  // Fett-Markup: !wort! → <strong>wort</strong>  |  !(text mit spaces)! → <strong>text mit spaces</strong>
+  // Nur vollständige Muster werden verarbeitet — einzelne ! oder () bleiben unverändert
+  function _boldCaps(str, escFn) {
+    if (!str) return escFn ? escFn('') : '';
+    var ef = escFn || esc;
+    return str.split('\n').map(function(line) {
+      var out = '', i = 0;
+      while (i < line.length) {
+        if (line[i] !== '!') {
+          var next = line.indexOf('!', i);
+          if (next === -1) { out += ef(line.slice(i)); break; }
+          out += ef(line.slice(i, next));
+          i = next;
+          continue;
+        }
+        // line[i] === '!'
+        if (i + 1 < line.length && line[i + 1] === '(') {
+          // Prüfe !(content)! Muster
+          var close = line.indexOf(')!', i + 2);
+          if (close !== -1) {
+            var content = line.slice(i + 2, close);
+            if (content.length > 0) {
+              out += '<strong>' + ef(content) + '</strong>';
+              i = close + 2; continue;
+            }
+          }
+        } else {
+          // Prüfe !wort! Muster (kein Leerzeichen im Wort)
+          var nb = line.indexOf('!', i + 1);
+          if (nb > i + 1) {
+            var cand = line.slice(i + 1, nb);
+            if (cand.length > 0 && cand.indexOf(' ') === -1 && cand.indexOf('(') === -1) {
+              out += '<strong>' + ef(cand) + '</strong>';
+              i = nb + 1; continue;
+            }
+          }
+        }
+        // Kein vollständiges Muster — ! literal ausgeben
+        out += ef('!');
+        i++;
+      }
+      return out;
+    }).join('\n');
   }
 
   function gk() { return document.getElementById('hGroup').value; }
@@ -1296,7 +1345,7 @@ body.pdf-embed-open{overflow:hidden}
     var rowsHtml = sec.rows.map(function(row) { return buildRow(sec.id, row); }).join('');
     return '<div class="section-block" id="sec_' + sec.id + '" data-secid="' + sec.id + '">' +
       '<div class="section-head">' +
-        '<span class="drag-handle">&#8286;</span>' +
+        '<span class="drag-handle" data-secid="' + sec.id + '">&#8286;</span>' +
         '<input class="section-name-inp" type="text" value="' + esc(sec.name) + '" data-secid="' + sec.id + '" data-secname="1" placeholder="Abschnittname">' +
         '<span class="section-badge" id="secbadge_' + sec.id + '">' + (dist > 0 ? dist + ' m' : '0 m') + '</span>' +
         '<button class="sec-btn" data-action="collapse" data-secid="' + sec.id + '">' + (sec.collapsed ? '&#9660;' : '&#9650;') + '</button>' +
@@ -1461,13 +1510,15 @@ body.pdf-embed-open{overflow:hidden}
     nc.addEventListener('blur', containerBlur, true);
     nc.addEventListener('click', containerClick);
 
-    nc.querySelectorAll('.section-block').forEach(function(el) {
-      var id = parseInt(el.dataset.secid);
-      el.addEventListener('dragstart', function(e) { secDragStart(e, id); });
-      el.addEventListener('dragover',  function(e) { secDragOver(e, id); });
-      el.addEventListener('drop',      function(e) { secDrop(e, id); });
-      el.addEventListener('dragleave', function(e) { secDragLeave(id); });
-      el.setAttribute('draggable', 'true');
+    // Section drag via mouse events (no HTML5 DnD)
+    nc.querySelectorAll('.section-head').forEach(function(el) {
+      var id = parseInt(el.closest('.section-block').dataset.secid);
+      el.addEventListener('mousedown', function(e) {
+        if (e.button !== 0) return;
+        if (e.target.closest('.sec-btn')) return;
+        if (e.target.tagName === 'INPUT') return;
+        _mdsDown(e, id);
+      });
     });
 
     nc.querySelectorAll('.row-draggable').forEach(function(el) {
@@ -1667,6 +1718,7 @@ body.pdf-embed-open{overflow:hidden}
         if (e.key === 'ArrowLeft' && el.selectionStart === 0) {
           e.preventDefault(); navigateCell(secId, rowId, 5, 0, -1); return;
         }
+        if (e.key === 'Enter' && e.shiftKey) { return; } // Shift+Enter → normaler Zeilenumbruch
         if (e.key === 'Enter' || e.key === 'Tab') {
           e.preventDefault();
           collectRow(secId, rowId);
@@ -1818,50 +1870,86 @@ body.pdf-embed-open{overflow:hidden}
     }
   }
 
-  // ---- DRAG SECTIONS ----
-  function secDragStart(e, id) {
-    // Only start section drag from the section-head handle, not from row draggables
-    if (dragSrcRowId !== null) { e.preventDefault(); return; }
-    dragSrcSecId = id; dragSrcRowId = null;
-    isInternalDrag = true;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', 'sec:' + id);
-    e.stopPropagation();
-    setTimeout(function() {
-      var el = document.getElementById('sec_' + id);
-      if (el) el.classList.add('dragging');
-    }, 0);
-  }
-  function secDragOver(e, id) {
-    e.preventDefault();
-    if (id !== dragSrcSecId && !dragSrcRowId) {
-      var el = document.getElementById('sec_' + id);
-      if (el) el.classList.add('drag-over');
-    }
-  }
-  function secDragLeave(id) {
-    var el = document.getElementById('sec_' + id);
-    if (el) el.classList.remove('drag-over');
-  }
-  function secDrop(e, id) {
-    e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) return; // let document handler take it
-    e.stopPropagation(); secDragLeave(id);
-    var srcEl = document.getElementById('sec_' + dragSrcSecId);
+  // ---- DRAG SECTIONS (mouse-event based, no HTML5 DnD) ----
+  function _mdsCleanup() {
+    if (_mds.clone && _mds.clone.parentNode) _mds.clone.parentNode.removeChild(_mds.clone);
+    if (_mds.placeholder && _mds.placeholder.parentNode) _mds.placeholder.parentNode.removeChild(_mds.placeholder);
+    _mds.clone = null; _mds.placeholder = null;
+    var srcEl = _mds.srcId ? document.getElementById('sec_' + _mds.srcId) : null;
     if (srcEl) srcEl.classList.remove('dragging');
-    // Only act if we're dragging a section (not a row)
-    var dt = e.dataTransfer.getData('text/plain') || '';
-    if (dt.indexOf('row:') === 0) { dragSrcRowId = null; return; }
-    if (!dragSrcRowId && dragSrcSecId && id !== dragSrcSecId) {
-      var si = sections.findIndex(function(s){ return s.id === dragSrcSecId; });
-      var ti = sections.findIndex(function(s){ return s.id === id; });
-      if (si !== -1 && ti !== -1) {
-        var moved = sections.splice(si, 1)[0];
-        sections.splice(ti, 0, moved);
-        render(); updateStats();
+    _mds.active = false; _mds.srcId = null; _mds.origIdx = -1;
+    _mds.insertBefore = undefined;
+  }
+  function _mdsDown(e, id) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    var srcEl = document.getElementById('sec_' + id);
+    if (!srcEl) return;
+    var rect = srcEl.getBoundingClientRect();
+    _mds.active = true;
+    _mds.srcId = id;
+    _mds.origIdx = sections.findIndex(function(s){ return s.id === id; });
+    _mds.insertBefore = undefined;
+    _mds.offX = e.clientX - rect.left;
+    _mds.offY = e.clientY - rect.top;
+    _mds.clone = srcEl.cloneNode(true);
+    _mds.clone.style.cssText = 'position:fixed;left:'+rect.left+'px;top:'+rect.top+'px;'+
+      'width:'+rect.width+'px;opacity:0.85;pointer-events:none;z-index:9999;'+
+      'box-shadow:0 8px 28px rgba(0,0,0,.22);transform:rotate(1.2deg);transition:none;';
+    document.body.appendChild(_mds.clone);
+    _mds.placeholder = document.createElement('div');
+    _mds.placeholder.className = 'sec-drag-placeholder active';
+    _mds.placeholder.style.height = srcEl.offsetHeight + 'px';
+    srcEl.parentNode.insertBefore(_mds.placeholder, srcEl);
+    srcEl.classList.add('dragging');
+    document.addEventListener('mousemove', _mdsMove);
+    document.addEventListener('mouseup',   _mdsUp);
+  }
+  function _mdsMove(e) {
+    if (!_mds.active) return;
+    _mds.clone.style.left = (e.clientX - _mds.offX) + 'px';
+    _mds.clone.style.top  = (e.clientY - _mds.offY) + 'px';
+    var container = document.getElementById('sectionsContainer');
+    if (!container) return;
+    var blocks = Array.from(container.querySelectorAll('.section-block'));
+    var placed = false;
+    for (var i = 0; i < blocks.length; i++) {
+      if (blocks[i].classList.contains('dragging')) continue;
+      var r = blocks[i].getBoundingClientRect();
+      if (e.clientY < r.bottom) {
+        var bid = parseInt(blocks[i].dataset.secid);
+        if (e.clientY < r.top + r.height / 2) {
+          _mds.insertBefore = bid;
+          container.insertBefore(_mds.placeholder, blocks[i]);
+        } else {
+          var next = null;
+          for (var j = i + 1; j < blocks.length; j++) {
+            if (!blocks[j].classList.contains('dragging')) { next = blocks[j]; break; }
+          }
+          _mds.insertBefore = next ? parseInt(next.dataset.secid) : null;
+          container.insertBefore(_mds.placeholder, next || null);
+        }
+        placed = true; break;
       }
     }
-    dragSrcRowId = null;
+    if (!placed) { _mds.insertBefore = null; container.appendChild(_mds.placeholder); }
+  }
+  function _mdsUp() {
+    document.removeEventListener('mousemove', _mdsMove);
+    document.removeEventListener('mouseup',   _mdsUp);
+    if (!_mds.active) return;
+    var srcId = _mds.srcId, insertBefore = _mds.insertBefore, origIdx = _mds.origIdx;
+    _mdsCleanup();
+    // insertBefore === undefined → Placeholder wurde nie bewegt → sauber abbrechen
+    if (insertBefore === undefined) return;
+    var si = sections.findIndex(function(s){ return s.id === srcId; });
+    if (si === -1) return;
+    var moved = sections.splice(si, 1)[0];
+    if (insertBefore !== null) {
+      var ti = sections.findIndex(function(s){ return s.id === insertBefore; });
+      sections.splice(ti !== -1 ? ti : sections.length, 0, moved);
+    } else { sections.push(moved); }
+    render(); updateStats();
   }
 
   // ---- DRAG ROWS ----
@@ -2018,9 +2106,9 @@ body.pdf-embed-open{overflow:hidden}
         else if (row.smartRaw && row.smartRaw.trim()) set = '<em>' + esc(row.smartRaw) + '</em>'; // invalid → italic black
         var timeUnder = (showTime && rowSecs > 0) ? '<div style="font-family:monospace;font-size:9px;color:#888;margin-top:1px">~' + fmtTime(rowSecs) + '</div>' : '';
         return '<tr' + bg + '>' +
-          '<td style="width:100px;font-family:monospace;font-size:12px;color:#333;white-space:nowrap">' + set + '</td>' +
+          '<td style="width:100px;font-family:monospace;font-size:12px;color:#333;overflow-wrap:break-word;word-break:break-word">' + set + '</td>' +
           '<td style="width:148px">' + esc(exDisp) + '</td>' +
-          '<td style="color:#444;word-wrap:break-word;max-width:300px;white-space:pre-wrap">' + esc(row.explanation || '/') + '</td>' +
+          '<td style="color:#444;word-wrap:break-word;max-width:300px;white-space:pre-wrap">' + _boldCaps(row.explanation || '/') + '</td>' +
           '<td style="width:66px;text-align:right;font-family:monospace;font-size:12px;color:#333">' + cumDisp + timeUnder + '</td>' +
         '</tr>';
       }).join('');
@@ -2134,10 +2222,10 @@ body.pdf-embed-open{overflow:hidden}
         '-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:hidden}' +
       '.doc-summary{margin-bottom:0!important}' +
       '.doc-sec{margin:0!important;padding-top:10px!important;padding-bottom:6px!important;page-break-inside:auto}' +
-      '.doc-table{margin-bottom:0!important}' +
+      '.doc-table{margin-bottom:0!important;table-layout:fixed}' +
       '.doc-section-head{page-break-after:avoid}' +
       '.doc-table tr{page-break-inside:avoid}' +
-      '.doc-table td{word-wrap:break-word;overflow-wrap:break-word}' +
+      '.doc-table td{word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;overflow:hidden}' +
       '.pg-footer{position:absolute;bottom:0;left:14mm;right:14mm;height:16mm}' +
       '.pg-footer hr{border:none;border-top:0.5px solid #bbb;margin:0;position:absolute;top:0;left:0;right:0}' +
       '.pg-footer .pfi{position:absolute;top:5mm;left:0;right:0;display:flex;justify-content:space-between;' +
@@ -2443,8 +2531,8 @@ body.pdf-embed-open{overflow:hidden}
     document.getElementById('hDate').value  = data.date||'';
     document.getElementById('hCoach').value = data.coach||'';
     if (document.getElementById('hGroup'))  document.getElementById('hGroup').value  = data.group||'';
-    if (document.getElementById('hGoal'))   document.getElementById('hGoal').value   = data.goal||'';
-    document.getElementById('hNotes').value = data.notes||'';
+    if (document.getElementById('hGoal'))   { document.getElementById('hGoal').value   = data.goal||'';  autoResize(document.getElementById('hGoal')); }
+    document.getElementById('hNotes').value = data.notes||''; autoResize(document.getElementById('hNotes'));
     // Reset chips to defaults, then merge any new chips from loaded data
     allChips = DEFAULT_MATERIALS.slice();
     var loadedChips = (data.chips||[]);
@@ -2776,7 +2864,7 @@ body.pdf-embed-open{overflow:hidden}
         sectHtml += '<tr style="' + bgStyle + '">' +
           '<td style="font-family:Courier New,monospace;font-size:9pt;padding:5pt 8pt 5pt 0;vertical-align:top;' + borderStyle + 'color:#333333;width:75pt"><p style="margin:0;mso-line-height-rule:exactly">' + set + '</p></td>' +
           '<td style="font-family:Garamond,Georgia,serif;font-size:10pt;padding:5pt 8pt;vertical-align:top;' + borderStyle + 'width:111pt"><p style="margin:0;mso-line-height-rule:exactly">' + escW(exD) + '</p></td>' +
-          '<td style="font-family:Garamond,Georgia,serif;font-size:10pt;padding:5pt 8pt;color:#444444;vertical-align:top;' + borderStyle + '">' + (row.explanation||'/').split('\n').map(function(l){ return '<p style="margin:0;mso-line-height-rule:exactly">' + escW(l||' ') + '</p>'; }).join('') + '</td>' +
+          '<td style="font-family:Garamond,Georgia,serif;font-size:10pt;padding:5pt 8pt;color:#444444;vertical-align:top;' + borderStyle + '">' + _boldCaps(row.explanation||'/', escW).split('\n').map(function(l){ return '<p style="margin:0;mso-line-height-rule:exactly">' + l + '</p>'; }).join('') + '</td>' +
           '<td style="font-family:Courier New,monospace;font-size:9pt;padding:5pt 0 5pt 8pt;text-align:right;vertical-align:top;' + borderStyle + 'width:50pt">' +
             '<p style="margin:0;mso-line-height-rule:exactly">' + cumDisp + '</p>' +
             (showTime && rowSecs > 0 && cumVal > 0 ? '<p style="margin:0;mso-line-height-rule:exactly;font-size:5.5pt;color:#888888">~' + fmtTime(rowSecs) + '</p>' : '') +
@@ -3142,8 +3230,8 @@ body.pdf-embed-open{overflow:hidden}
       var text = val.innerText.trim();
       if (field === 'datum') { var d = document.getElementById('hDate'); if(d) d.value = text; }
       else if (field === 'trainer') { var d = document.getElementById('hCoach'); if(d) d.value = text; }
-      else if (field === 'trainingsziel') { var d = document.getElementById('hGoal'); if(d) d.value = text; }
-      else if (field === 'notizen') { var d = document.getElementById('hNotes'); if(d) d.value = text; }
+      else if (field === 'trainingsziel') { var d = document.getElementById('hGoal'); if(d) { d.value = text; autoResize(d); } }
+      else if (field === 'notizen') { var d = document.getElementById('hNotes'); if(d) { d.value = text; autoResize(d); } }
     });
     page.querySelectorAll('.doc-section-name').forEach(function(el, si) {
       if (sections[si]) sections[si].name = el.innerText.trim();
@@ -3270,7 +3358,9 @@ body.pdf-embed-open{overflow:hidden}
     e.preventDefault();
     dropCount = 0;
     dropOverlay.style.display = 'none';
+    if (isInternalDrag) return;
     var files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
     for (var i = 0; i < files.length; i++) {
       var fname = files[i].name.toLowerCase();
       if (fname.endsWith('.swimplan') || fname.endsWith('.pdf')) {
@@ -3300,8 +3390,8 @@ body.pdf-embed-open{overflow:hidden}
       '.pg:last-child{page-break-after:auto}' +
       '.doc-summary{margin-bottom:0!important}' +
       '.doc-sec{margin:0!important;padding-top:10px!important;padding-bottom:6px!important}' +
-      '.doc-table{margin-bottom:0!important}' +
-      '.doc-table td{word-wrap:break-word;overflow-wrap:break-word}' +
+      '.doc-table{margin-bottom:0!important;table-layout:fixed}' +
+      '.doc-table td{word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;overflow:hidden}' +
       '.pg-footer{position:absolute;bottom:0;left:14mm;right:14mm;height:16mm}' +
       '.pg-footer hr{border:none;border-top:0.5px solid #bbb;margin:0;position:absolute;top:0;left:0;right:0}' +
       '.pg-footer .pfi{position:absolute;top:5mm;left:0;right:0;display:flex;justify-content:space-between;align-items:center;font-family:"Courier New",monospace;font-size:6pt;font-weight:700;color:#333;letter-spacing:0.4px;text-transform:uppercase}' +
@@ -3581,10 +3671,13 @@ body.pdf-embed-open{overflow:hidden}
   ['hTitle','hDate','hCoach','hNotes','hGroupCustom','hGoal'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) {
-      el.addEventListener('input', function() { updateStats(); });
-      // Enter/Tab: move to next field or blur
+      el.addEventListener('input', function() {
+        if (el.tagName === 'TEXTAREA') autoResize(el);
+        updateStats();
+      });
+      // Enter/Tab: move to next field or blur (not for multi-line textareas)
       el.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+        if (e.key === 'Enter' && el.tagName !== 'TEXTAREA') { e.preventDefault(); el.blur(); }
         // Tab handled natively
       });
     }
