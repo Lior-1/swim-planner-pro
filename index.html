@@ -122,8 +122,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--serif);font-size:1
 .section-table th{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border2);background:var(--surface2);font-weight:500}
 .section-table td{border-bottom:1px solid var(--border2);padding:0;vertical-align:top}
 .section-table tr:last-child td{border-bottom:none}
-.row-draggable.dragging-row{opacity:.3}
+.row-draggable{user-select:none;-webkit-user-select:none}
+.row-draggable.dragging-row{display:none}
 .row-draggable.drag-row-over td{background:var(--accent-bg) !important}
+.row-drag-placeholder{border-radius:3px;border:2px dashed var(--accent);background:var(--accent-bg);opacity:0;height:0;transition:height 0.18s ease,opacity 0.18s ease,background 0.12s ease,border-color 0.12s ease;pointer-events:none;display:block}
+.row-drag-placeholder.active{opacity:1}
+.row-drag-placeholder.targeted{background:var(--accent-bg);border-color:var(--accent);border-width:3px;opacity:1;filter:brightness(0.7)}
+.row-drag-handle{display:none}
 .cell-inp{font-family:var(--serif);font-size:14px;border:none;outline:none;background:transparent;color:var(--text);padding:8px 10px;width:100%;resize:none;overflow:hidden;line-height:1.5;min-height:36px;display:block;transition:background .12s}
 .cell-inp:focus{background:var(--accent-bg)}
 .cell-inp.mono{font-family:var(--mono);font-size:12px}
@@ -897,6 +902,10 @@ body.pdf-embed-open{overflow:hidden}
   // Section drag – mouse-event based (no HTML5 DnD for sections)
   var _mds = { active:false, srcId:null, origIdx:-1, insertBefore:undefined,
                clone:null, placeholder:null, offX:0, offY:0 };
+  // Row drag – mouse-event based (same system as sections)
+  var _mdr = { active:false, srcSecId:null, srcRowId:null, insertBeforeRowId:undefined,
+               insertIntoSecId:null, clone:null, placeholder:null, offX:0, offY:0,
+               moved:false, startX:0, startY:0, targeted:false };
   var modalCb = null;
   var _qrUpdateTimer = null;
   var _docRefreshTimer = null;
@@ -1037,14 +1046,16 @@ body.pdf-embed-open{overflow:hidden}
   }
 
   function isEmptyRow(row) {
-    return (!row.smartRaw || row.smartRaw.trim() === '') &&
-           (!row.dist || row.dist === 0) &&
-           (!row.timeSec || row.timeSec === 0) &&
-           (row.reps <= 1 || !row.reps) &&
-           (row.exercise === 'Kraul' || row.exercise === '') &&
-           (!row.customExercise || row.customExercise === '') &&
-           (!row.explanation || row.explanation === '') &&
-           (!row.pause || row.pause === '');
+    // Eine Zeile gilt als leer wenn alle sinnvollen Felder leer/Standard sind
+    var noContent = (!row.smartRaw || row.smartRaw.trim() === '');
+    var noDist    = (!row.dist || row.dist === 0);
+    var noTime    = (!row.timeSec || row.timeSec === 0);
+    var noReps    = (!row.reps || row.reps === 0 || row.reps === '' || Number(row.reps) <= 0);
+    var noExerc   = (!row.exercise || row.exercise === 'Kraul' || row.exercise === '');
+    var noCustEx  = (!row.customExercise || row.customExercise.trim() === '');
+    var noExpl    = (!row.explanation || row.explanation.trim() === '');
+    var noPause   = (!row.pause || row.pause.trim() === '');
+    return noContent && noDist && noTime && noReps && noExerc && noCustEx && noExpl && noPause;
   }
 
   function resolveExercise(text) {
@@ -1382,7 +1393,7 @@ body.pdf-embed-open{overflow:hidden}
     return '<tr class="row-draggable" id="rowtr_' + secId + '_' + row.id + '" data-secid="' + secId + '" data-rowid="' + row.id + '">' +
       '<td><textarea class="cell-inp mono" id="' + p + '_smart" rows="1" placeholder="4x300" data-secid="' + secId + '" data-rowid="' + row.id + '" data-field="smart" data-col="0">' + esc(smartVal) + '</textarea></td>' +
       '<td><input type="number" class="cell-inp center" id="' + p + '_reps" placeholder="--" min="1" max="999" value="' + (row.reps > 1 ? row.reps : '') + '" data-secid="' + secId + '" data-rowid="' + row.id + '" data-field="reps"></td>' +
-      '<td><input type="number" class="cell-inp center" id="' + p + '_dist" placeholder="--" min="0" step="25" value="' + (row.dist > 0 ? row.dist : '') + '" data-secid="' + secId + '" data-rowid="' + row.id + '" data-field="dist"></td>' +
+      '<td><input type="number" class="cell-inp center" id="' + p + '_dist" placeholder="--" min="0" step="1" value="' + (row.dist > 0 ? row.dist : '') + '" data-secid="' + secId + '" data-rowid="' + row.id + '" data-field="dist"></td>' +
       '<td><input type="text" class="cell-inp" id="' + p + '_cust" placeholder="Kraul" value="' + esc(exDisplayVal) + '" data-secid="' + secId + '" data-rowid="' + row.id + '" data-field="ex" data-col="3" title="Doppelklick für Auswahl" autocomplete="off"></td>' +
       '<td><input type="text" class="cell-inp mono" id="' + p + '_pause" placeholder="--" value="' + esc(row.pause || '') + '" style="font-size:12px" data-secid="' + secId + '" data-rowid="' + row.id + '" data-field="pause" data-col="4"></td>' +
       '<td><textarea class="cell-inp" id="' + p + '_expl" rows="1" placeholder="/" data-secid="' + secId + '" data-rowid="' + row.id + '" data-field="expl" data-col="5">' + esc(row.explanation || '') + '</textarea></td>' +
@@ -1391,6 +1402,7 @@ body.pdf-embed-open{overflow:hidden}
         '<input id="' + p + '_mantime" type="text" style="font-family:var(--mono);font-size:9px;width:54px;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--accent);text-align:right;outline:none;display:block;margin:0 10px 6px auto;' + (!showTime ? 'display:none' : '') + '" placeholder="' + (rowTimeSecs(row) > 0 ? '~' + fmtTime(rowTimeSecs(row)) : 'min') + '"  data-secid="' + secId + '" data-rowid="' + row.id + '" data-field="mantime" value="' + (row.timeSec ? fmtTime(row.timeSec) : '') + '">' +
       '</td>' +
       '<td style="white-space:nowrap">' +
+        '<span class="row-drag-handle" data-secid="' + secId + '" data-rowid="' + row.id + '">&#8286;</span>' +
         '<button class="row-del-btn" data-action="setrowspeed" data-secid="' + secId + '" data-rowid="' + row.id + '" title="Zeit für diese Übung (50m)" style="font-size:10px;color:var(--accent);padding:2px 4px">⏱</button>' +
         '<button class="row-del-btn" data-action="duprow" data-secid="' + secId + '" data-rowid="' + row.id + '" title="Duplizieren" style="color:var(--text3)">&#10063;</button>' +
         '<button class="row-del-btn" data-action="delrow" data-secid="' + secId + '" data-rowid="' + row.id + '">&#10005;</button>' +
@@ -1516,19 +1528,33 @@ body.pdf-embed-open{overflow:hidden}
       el.addEventListener('mousedown', function(e) {
         if (e.button !== 0) return;
         if (e.target.closest('.sec-btn')) return;
-        if (e.target.tagName === 'INPUT') return;
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.tagName === 'BUTTON') return;
+        if (e.target.closest('input, textarea, select, button')) return;
         _mdsDown(e, id);
       });
     });
 
-    nc.querySelectorAll('.row-draggable').forEach(function(el) {
+    nc.querySelectorAll('tr.row-draggable').forEach(function(el) {
       var secId = parseInt(el.dataset.secid);
       var rowId = parseInt(el.dataset.rowid);
-      el.addEventListener('dragstart', function(e) { rowDragStart(e, secId, rowId); });
-      el.addEventListener('dragover',  function(e) { rowDragOver(e, secId, rowId); });
-      el.addEventListener('drop',      function(e) { rowDrop(e, secId, rowId); });
-      el.addEventListener('dragleave', function(e) { rowDragLeave(secId, rowId); });
-      el.setAttribute('draggable', 'true');
+      var _pressTimer = null;
+      el.addEventListener('mousedown', function(e) {
+        if (e.button !== 0) return;
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' ||
+            e.target.tagName === 'SELECT' || e.target.tagName === 'BUTTON') return;
+        if (e.target.closest('input, textarea, select, button')) return;
+        e.preventDefault();
+        var _e = e;
+        _pressTimer = setTimeout(function() {
+          _pressTimer = null;
+          _mdrDown(_e, secId, rowId);
+        }, 80);
+        var cancelPress = function() {
+          if (_pressTimer) { clearTimeout(_pressTimer); _pressTimer = null; }
+          document.removeEventListener('mouseup', cancelPress);
+        };
+        document.addEventListener('mouseup', cancelPress);
+      });
     });
 
     nc.querySelectorAll('textarea').forEach(function(ta) {
@@ -1814,7 +1840,7 @@ body.pdf-embed-open{overflow:hidden}
 
       // 3. Refresh doc preview and QR
       scheduleDocRefresh();
-      setTimeout(function(){ if(typeof updateQrCode==='function') updateQrCode(); }, 150);
+      setTimeout(function(){ if(typeof updateQrCode==='function') updateQrCode(); }, 80);
       // Also call full updateStats to sync everything (QR, doc, speed label)
       updateStats();
     }
@@ -1952,46 +1978,143 @@ body.pdf-embed-open{overflow:hidden}
     render(); updateStats();
   }
 
-  // ---- DRAG ROWS ----
-  function rowDragStart(e, secId, rowId) {
-    dragSrcSecId = secId; dragSrcRowId = rowId;
-    isInternalDrag = true;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', 'row:' + secId + ':' + rowId);
-    e.stopPropagation();
-    setTimeout(function() {
-      var el = document.getElementById('rowtr_' + secId + '_' + rowId);
-      if (el) el.classList.add('dragging-row');
-    }, 0);
+  // ---- DRAG ROWS (long-press, blue placeholder like sections) ----
+  function _mdrCleanup() {
+    if (_mdr.clone && _mdr.clone.parentNode) _mdr.clone.parentNode.removeChild(_mdr.clone);
+    if (_mdr.placeholder && _mdr.placeholder.parentNode) _mdr.placeholder.parentNode.removeChild(_mdr.placeholder);
+    _mdr.clone = null; _mdr.placeholder = null;
+    var srcEl = (_mdr.srcSecId != null && _mdr.srcRowId != null)
+      ? document.getElementById('rowtr_' + _mdr.srcSecId + '_' + _mdr.srcRowId) : null;
+    if (srcEl) srcEl.classList.remove('dragging-row');
+    _mdr.active = false; _mdr.moved = false; _mdr.targeted = false; _mdr.srcSecId = null; _mdr.srcRowId = null;
+    _mdr.insertBefore = undefined; _mdr.insertIntoSecId = null;
   }
-  function rowDragOver(e, secId, rowId) {
-    e.preventDefault(); e.stopPropagation();
-    if (dragSrcRowId && rowId !== dragSrcRowId) {
-      var el = document.getElementById('rowtr_' + secId + '_' + rowId);
-      if (el) el.classList.add('drag-row-over');
+  function _mdrDown(e, secId, rowId) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    var srcEl = document.getElementById('rowtr_' + secId + '_' + rowId);
+    if (!srcEl) return;
+    var rect = srcEl.getBoundingClientRect();
+    _mdr.active = true; _mdr.moved = false;
+    _mdr.srcSecId = secId; _mdr.srcRowId = rowId;
+    _mdr.insertBefore = undefined; _mdr.insertIntoSecId = null;
+    _mdr.offX = e.clientX - rect.left;
+    _mdr.offY = e.clientY - rect.top;
+    _mdr.startX = e.clientX; _mdr.startY = e.clientY;
+    // Floating clone (exakt wie _mdsDown)
+    var tbl = document.createElement('table');
+    tbl.className = 'section-table';
+    tbl.style.cssText = 'table-layout:fixed;width:' + rect.width + 'px;border-collapse:collapse;';
+    var tb2 = document.createElement('tbody');
+    tb2.appendChild(srcEl.cloneNode(true));
+    tbl.appendChild(tb2);
+    _mdr.clone = document.createElement('div');
+    _mdr.clone.style.cssText = 'position:fixed;left:'+rect.left+'px;top:'+rect.top+'px;'+
+      'width:'+rect.width+'px;opacity:0.85;pointer-events:none;z-index:9999;'+
+      'box-shadow:0 8px 28px rgba(0,0,0,.22);transform:rotate(1.2deg);transition:none;'+
+      'background:var(--surface);border-radius:3px;overflow:hidden;';
+    _mdr.clone.appendChild(tbl);
+    document.body.appendChild(_mdr.clone);
+    // Placeholder: blauer gestrichelter Block (wie sec-drag-placeholder), als <tr>-wrapper
+    // Wir nutzen ein <tr> mit einer einzelnen <td> die einen div enthält
+    _mdr.placeholder = document.createElement('tr');
+    _mdr.placeholder.style.cssText = 'pointer-events:none;';
+    var phTd = document.createElement('td');
+    phTd.colSpan = 8;
+    phTd.style.cssText = 'padding:2px 0;border:none;background:transparent;';
+    var phDiv = document.createElement('div');
+    phDiv.className = 'row-drag-placeholder active';
+    phDiv.style.height = '0px';
+    phTd.appendChild(phDiv);
+    _mdr.placeholder.appendChild(phTd);
+    srcEl.parentNode.insertBefore(_mdr.placeholder, srcEl);
+    srcEl.classList.add('dragging-row');
+    // Animate in (wie sec-drag-placeholder)
+    requestAnimationFrame(function() {
+      phDiv.style.height = rect.height + 'px';
+    });
+    document.addEventListener('mousemove', _mdrMove);
+    document.addEventListener('mouseup',   _mdrUp);
+  }
+  function _mdrMove(e) {
+    if (!_mdr.active) return;
+    // Threshold: erst ab 5px als "bewegt" zählen
+    if (!_mdr.moved) {
+      var dx = e.clientX - _mdr.startX, dy = e.clientY - _mdr.startY;
+      if (Math.sqrt(dx*dx + dy*dy) < 5) return;
+      _mdr.moved = true;
+    }
+    _mdr.clone.style.left = (e.clientX - _mdr.offX) + 'px';
+    _mdr.clone.style.top  = (e.clientY - _mdr.offY) + 'px';
+    // Placeholder targeted-Highlight wenn Maus über dem blauen Feld ist
+    var phDiv = _mdr.placeholder ? _mdr.placeholder.querySelector('.row-drag-placeholder') : null;
+    if (phDiv) {
+      var pr = phDiv.getBoundingClientRect();
+      var over = e.clientX >= pr.left && e.clientX <= pr.right && e.clientY >= pr.top && e.clientY <= pr.bottom;
+      phDiv.classList.toggle('targeted', over);
+      _mdr.targeted = over;
+    }
+    var allRows = Array.from(document.querySelectorAll('tr.row-draggable:not(.dragging-row)'));
+    var placed = false;
+    for (var i = 0; i < allRows.length; i++) {
+      var r = allRows[i].getBoundingClientRect();
+      if (e.clientY < r.bottom) {
+        var rid = parseInt(allRows[i].dataset.rowid);
+        var sid = parseInt(allRows[i].dataset.secid);
+        if (e.clientY < r.top + r.height / 2) {
+          _mdr.insertBefore = rid;
+          _mdr.insertIntoSecId = sid;
+          allRows[i].parentNode.insertBefore(_mdr.placeholder, allRows[i]);
+        } else {
+          var next = null;
+          for (var j = i + 1; j < allRows.length; j++) {
+            if (!allRows[j].classList.contains('dragging-row')) { next = allRows[j]; break; }
+          }
+          _mdr.insertBefore = next ? parseInt(next.dataset.rowid) : null;
+          _mdr.insertIntoSecId = next ? parseInt(next.dataset.secid) : sid;
+          if (next) { next.parentNode.insertBefore(_mdr.placeholder, next); }
+          else { allRows[i].parentNode.appendChild(_mdr.placeholder); }
+        }
+        placed = true; break;
+      }
+    }
+    if (!placed) {
+      var lastSec = sections[sections.length - 1];
+      if (lastSec) {
+        var lastTbody = document.querySelector('#sec_' + lastSec.id + ' tbody');
+        if (lastTbody) lastTbody.appendChild(_mdr.placeholder);
+        _mdr.insertBefore = null;
+        _mdr.insertIntoSecId = lastSec.id;
+      }
     }
   }
-  function rowDragLeave(secId, rowId) {
-    var el = document.getElementById('rowtr_' + secId + '_' + rowId);
-    if (el) el.classList.remove('drag-row-over');
-  }
-  function rowDrop(e, secId, rowId) {
-    e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) return; // let document handler take it
-    e.stopPropagation();
-    rowDragLeave(secId, rowId);
-    var srcEl = document.getElementById('rowtr_' + dragSrcSecId + '_' + dragSrcRowId);
-    if (srcEl) srcEl.classList.remove('dragging-row');
-    if (!dragSrcRowId || (rowId === dragSrcRowId && secId === dragSrcSecId)) return;
-    var srcSec = sections.find(function(s){ return s.id === dragSrcSecId; });
-    var tgtSec = sections.find(function(s){ return s.id === secId; });
-    if (!srcSec || !tgtSec) { console.warn('DnD: srcSec=', srcSec, 'tgtSec=', tgtSec); return; }
-    var si = srcSec.rows.findIndex(function(r){ return r.id === dragSrcRowId; });
-    var ti = tgtSec.rows.findIndex(function(r){ return r.id === rowId; });
-    if (si === -1 || ti === -1) { console.warn('DnD row not found si=', si, 'ti=', ti); return; }
+  function _mdrUp() {
+    document.removeEventListener('mousemove', _mdrMove);
+    document.removeEventListener('mouseup',   _mdrUp);
+    if (!_mdr.active) return;
+    var srcSecId = _mdr.srcSecId, srcRowId = _mdr.srcRowId;
+    var tgtSecId = _mdr.insertIntoSecId;
+    var insertBefore = _mdr.insertBefore;
+    var wasMoved = _mdr.moved;
+    _mdrCleanup();
+    // Nicht bewegt oder nie über anderer Zeile → zurück an Ursprung (kein render nötig)
+    if (!wasMoved || insertBefore === undefined || !_mdr.targeted) return;
+    var srcSec = sections.find(function(s){ return s.id === srcSecId; });
+    var tgtSec = sections.find(function(s){ return s.id === tgtSecId; });
+    if (!srcSec || !tgtSec) return;
+    var si = srcSec.rows.findIndex(function(r){ return r.id === srcRowId; });
+    if (si === -1) return;
     var moved = srcSec.rows.splice(si, 1)[0];
-    tgtSec.rows.splice(ti, 0, moved);
-    dragSrcRowId = null;
+    // Leere Sektion → Blanko-Zeile
+    if (srcSec.rows.length === 0) {
+      srcSec.rows.push(emptyRow());
+    }
+    if (insertBefore !== null) {
+      var ti = tgtSec.rows.findIndex(function(r){ return r.id === insertBefore; });
+      tgtSec.rows.splice(ti !== -1 ? ti : tgtSec.rows.length, 0, moved);
+    } else {
+      tgtSec.rows.push(moved);
+    }
     render(); updateStats();
   }
 
@@ -2012,6 +2135,16 @@ body.pdf-embed-open{overflow:hidden}
   });
   document.getElementById('modalOverlay').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && document.getElementById('modalOverlay').classList.contains('open')) {
+      e.preventDefault();
+      if (modalCb) modalCb();
+      closeModal();
+    }
+    if (e.key === 'Escape' && document.getElementById('modalOverlay').classList.contains('open')) {
+      closeModal();
+    }
   });
 
   // ---- MODE / THEME ----
