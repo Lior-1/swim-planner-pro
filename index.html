@@ -905,7 +905,7 @@ body.pdf-embed-open{overflow:hidden}
   // Row drag – mouse-event based (same system as sections)
   var _mdr = { active:false, srcSecId:null, srcRowId:null, insertBeforeRowId:undefined,
                insertIntoSecId:null, clone:null, placeholder:null, offX:0, offY:0,
-               moved:false, startX:0, startY:0, targeted:false };
+               moved:false, startX:0, startY:0 };
   var modalCb = null;
   var _qrUpdateTimer = null;
   var _docRefreshTimer = null;
@@ -1986,7 +1986,7 @@ body.pdf-embed-open{overflow:hidden}
     var srcEl = (_mdr.srcSecId != null && _mdr.srcRowId != null)
       ? document.getElementById('rowtr_' + _mdr.srcSecId + '_' + _mdr.srcRowId) : null;
     if (srcEl) srcEl.classList.remove('dragging-row');
-    _mdr.active = false; _mdr.moved = false; _mdr.targeted = false; _mdr.srcSecId = null; _mdr.srcRowId = null;
+    _mdr.active = false; _mdr.moved = false; _mdr.srcSecId = null; _mdr.srcRowId = null;
     _mdr.insertBefore = undefined; _mdr.insertIntoSecId = null;
   }
   function _mdrDown(e, secId, rowId) {
@@ -2052,7 +2052,6 @@ body.pdf-embed-open{overflow:hidden}
       var pr = phDiv.getBoundingClientRect();
       var over = e.clientX >= pr.left && e.clientX <= pr.right && e.clientY >= pr.top && e.clientY <= pr.bottom;
       phDiv.classList.toggle('targeted', over);
-      _mdr.targeted = over;
     }
     var allRows = Array.from(document.querySelectorAll('tr.row-draggable:not(.dragging-row)'));
     var placed = false;
@@ -2096,9 +2095,11 @@ body.pdf-embed-open{overflow:hidden}
     var tgtSecId = _mdr.insertIntoSecId;
     var insertBefore = _mdr.insertBefore;
     var wasMoved = _mdr.moved;
+    // isTargeted VOR cleanup lesen – danach ist placeholder bereits null!
+    var phDiv = _mdr.placeholder ? _mdr.placeholder.querySelector('.row-drag-placeholder') : null;
+    var isTargeted = phDiv && phDiv.classList.contains('targeted');
     _mdrCleanup();
-    // Nicht bewegt oder nie über anderer Zeile → zurück an Ursprung (kein render nötig)
-    if (!wasMoved || insertBefore === undefined || !_mdr.targeted) return;
+    if (!wasMoved || insertBefore === undefined || !isTargeted) return;
     var srcSec = sections.find(function(s){ return s.id === srcSecId; });
     var tgtSec = sections.find(function(s){ return s.id === tgtSecId; });
     if (!srcSec || !tgtSec) return;
