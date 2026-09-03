@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Swim Planner Pro</title>
+<link rel="apple-touch-icon" href="https://swim.lior.at/apple-touch-icon.png">
+<link rel="icon" href="https://swim.lior.at/favicon.png" type="image/png">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f5f4ef;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;}
+.card{background:#fff;border-radius:20px;box-shadow:0 8px 48px rgba(0,0,0,0.13);padding:48px 40px;max-width:380px;width:90%;text-align:center;}
+.brand{font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#aaa;font-family:monospace;margin-bottom:18px;}
+.msg{font-size:15px;color:#1a3a5c;margin-bottom:20px;}
+.err{color:#c0392b;font-size:15px;margin-top:6px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:32px;height:32px;margin:0 auto;border:3px solid #ddd;border-top-color:#1a3a5c;border-radius:50%;animation:spin 0.9s linear infinite;}
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="brand">Swim Planner Pro</div>
+  <div class="msg">Wird geöffnet …</div>
+  <div class="spinner"></div>
+</div>
+<script>
+(function(){
+  // Diese Seite trägt selbst keine Trainingsdaten und braucht keinen eigenen
+  // Server — sie liest nur den QR-Hash aus ihrer eigenen URL (der Server
+  // bekommt ihn nie zu sehen) und leitet sofort, ohne Zwischenklick, zu
+  // swim.lior.at weiter, das denselben Hash dann interpretiert und den Plan
+  // anzeigt.
+  //
+  // NICHT link.lior.at: das erwartet einen vorher über shorten_link.php
+  // erzeugten Kurz-Code (Format link.lior.at/<code>, geprüft gegen die
+  // Datenbank) — dafür ist ein eingeloggter Account nötig, den diese
+  // statische Seite nicht hat. Der QR-Code hier enthält stattdessen die
+  // vollen Plandaten direkt im Hash (#SWIMQR:<Daten>), genau wie der Rest
+  // der App das schon macht — dafür ist swim.lior.at das einzige Ziel, das
+  // damit sofort etwas anfangen kann, ganz ohne Zwischenschritt.
+  var hash = window.location.hash || '';
+  var prefix = '#SWIMQR:';
+  if (hash.indexOf(prefix) !== 0) {
+    document.querySelector('.msg').textContent = '';
+    document.querySelector('.spinner').style.display = 'none';
+    document.getElementById('card').insertAdjacentHTML('beforeend', '<p class="err">Ungültiger QR-Code</p>');
+    return;
+  }
+  var b64 = hash.slice(prefix.length);
+
+  // replace() statt href, damit diese Zwischenseite nicht in der
+  // Browser-Historie landet (Zurück-Button überspringt sie). Ziel ist
+  // viewer.html (die eigentliche Anzeige-Seite mit Titel/Datum/PDF-Vorschau
+  // und "PDF herunterladen"/"PDF bearbeiten"-Knöpfen) — nicht der reine
+  // PDF-Vorschau-Modus des Editors.
+  window.location.replace('https://swim.lior.at/viewer.html#SWIMQR:' + b64);
+})();
+</script>
+</body>
+</html>
